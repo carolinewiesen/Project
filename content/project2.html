@@ -1,0 +1,436 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "SDS348"
+date: "5/2/20"
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: yes
+---
+
+
+
+<div id="caroline-wiesen-cgw685" class="section level1">
+<h1>Caroline Wiesen, cgw685</h1>
+<pre class="r"><code>library(readxl)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(cluster)
+library(formatR)
+library(lmtest)
+library(sandwich)
+library(glmnet)
+
+steph &lt;- read_csv(&quot;Stephen.Curry.Stats.csv&quot;)
+steph$Successful.Shots &lt;- steph$&#39;Successful Shots&#39;
+steph$&#39;Successful Shots&#39; &lt;- NULL
+steph$X3.Points.Succesful &lt;- steph$&#39;3 Points Succesful&#39;
+steph$&#39;3 Points Succesful&#39; &lt;- NULL
+steph$Total.Shots &lt;- steph$&#39;Total Shots&#39;
+steph$&#39;Total Shots&#39; &lt;- NULL
+steph$Total.3.Points &lt;- steph$&#39;Total 3 Points&#39;
+steph$&#39;Total 3 Points&#39; &lt;- NULL
+steph$Successful.FT &lt;- steph$&#39;Successful FT&#39;
+steph$&#39;Successful FT&#39; &lt;- NULL
+steph$Total.FT &lt;- steph$&#39;Total FT&#39;
+steph$&#39;Total FT&#39; &lt;- NULL
+steph$Score.GS &lt;- steph$&#39;Score GS&#39;
+steph$&#39;Score GS&#39; &lt;- NULL
+steph$Score.Opponent &lt;- steph$&#39;Score Opponent&#39;
+steph$&#39;Score Opponent&#39; &lt;- NULL</code></pre>
+<p>The dataset used for this project is originally called “Stephen Curry Stats” and it has many different variables that are important to the game of basketball. It comprises his statistics from the 2016-2017 NBA season and has variables such as “PTS” which show total points per game, “Result” which shows win/loss status of each game, “3.Points.Successful” which show total number of made 3-pointers per game, and more. There are 100 observations in this dataset (100 games that are recorded with the statistics).</p>
+<pre class="r"><code>man1&lt;-manova(cbind(PTS, Minutes, Total.Shots, Total.3.Points, Total.FT, STL)~ Type, data = steph)
+summary(man1)</code></pre>
+<pre><code>##           Df  Pillai approx F num Df den Df Pr(&gt;F)
+## Type       4 0.29146   1.2182     24    372 0.2214
+## Residuals 95</code></pre>
+<p>Since the p-value is listed at 0.2214, which is too big to be significant, I cannot move along with performing more tests, such as an ANOVA and post-hoc test. The assumptions for this MANOVA are many, and this MANOVA would not have passed all of them since it was not significant. The assumptions are random samples, independent observations, multivariate normality of DVs, homogeneity of within-group covariance matrices, linear relationships among DVs, no extreme univariate or multivariate outliers, and no multicollinearity.</p>
+<pre class="r"><code>steph %&gt;% group_by(Type, Dates) %&gt;% summarize(mean(PTS))</code></pre>
+<pre><code>## # A tibble: 100 x 3
+## # Groups:   Type [5]
+##    Type                     Dates   `mean(PTS)`
+##    &lt;chr&gt;                    &lt;chr&gt;         &lt;dbl&gt;
+##  1 Conference Finals        5/14/17          40
+##  2 Conference Finals        5/16/17          29
+##  3 Conference Finals        5/20/17          21
+##  4 Conference Finals        5/22/17          36
+##  5 Conference Quarterfinals 4/16/17          29
+##  6 Conference Quarterfinals 4/19/17          19
+##  7 Conference Quarterfinals 4/22/17          34
+##  8 Conference Quarterfinals 4/24/17          37
+##  9 Conference Semifinals    5/2/17           22
+## 10 Conference Semifinals    5/4/17           23
+## # … with 90 more rows</code></pre>
+<pre class="r"><code>regular &lt;- c(24,24,20,24,22,24,27,21,28,43,0,35,40,30,26,23,28,28,33,30,35,16,20,22,31,24,34,25,21,13,46,24,28,17,22,30,8,19,25,15,25,15,28,31,14,13,19,26,39,18,26,11,13,21,29,35,27,19,25,35,13,26,0,29,25,28,23,23,17,27,21,32,29,24,31,24,23,28,20,42,19,42,0)
+playoffs &lt;- c(40,29,21,36,29,19,34,37,22,23,23,30,28,34,32,26,14)
+
+reg &lt;- steph %&gt;% filter(Type == &#39;REGULAR SEASON STATS&#39;) %&gt;% select(&#39;PTS&#39;)
+play &lt;- steph %&gt;% filter(grepl(&quot;inals&quot;, Type)) %&gt;% select(&#39;PTS&#39;)
+regular1 &lt;- c(reg)
+playoffs1 &lt;- c(play)
+
+t.test(regular,playoffs)</code></pre>
+<pre><code>##
+## Welch Two Sample t-test
+##
+## data: regular and playoffs
+## t = -1.887, df = 27.491, p-value = 0.06976
+## alternative hypothesis: true difference in means is not
+equal to 0
+## 95 percent confidence interval:
+## -7.7646587 0.3217104
+## sample estimates:
+## mean of x mean of y
+## 24.33735 28.05882</code></pre>
+<pre class="r"><code>bball1&lt;-data.frame(condition=c(rep(&quot;regular1&quot;,83),rep(&quot;playoffs1&quot;,17)),points=c(regular,playoffs))
+head(bball1)</code></pre>
+<pre><code>##   condition points
+## 1  regular1     24
+## 2  regular1     24
+## 3  regular1     20
+## 4  regular1     24
+## 5  regular1     22
+## 6  regular1     24</code></pre>
+<pre class="r"><code>ggplot(bball1,aes(points,fill=condition))+geom_histogram(bins=17)+facet_wrap(~condition,ncol=2)+theme(legend.position=&quot;none&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-3-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>head(bball1)</code></pre>
+<pre><code>##   condition points
+## 1  regular1     24
+## 2  regular1     24
+## 3  regular1     20
+## 4  regular1     24
+## 5  regular1     22
+## 6  regular1     24</code></pre>
+<pre class="r"><code>bball1%&gt;%group_by(condition)%&gt;%summarize(means=mean(points))%&gt;%summarize(`mean_diff:`=diff(means))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `mean_diff:`
+##          &lt;dbl&gt;
+## 1        -3.72</code></pre>
+<pre class="r"><code>rand_dist&lt;-vector()
+for(i in 1:5000){
+new&lt;-data.frame(points=sample(bball1$points),condition=bball1$condition)
+rand_dist[i]&lt;-mean(new[new$condition==&quot;regular1&quot;,]$points)-
+              mean(new[new$condition==&quot;playoffs1&quot;,]$points)}
+{hist(rand_dist,main=&quot;&quot;,ylab=&quot;&quot;); abline(v = -3.721474, col=&quot;orange&quot;)}</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-3-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>mean(rand_dist&lt; -3.721474 | rand_dist &gt; 3.721474)</code></pre>
+<pre><code>## [1] 0.1098</code></pre>
+<p>The null hypothesis for this test is that there is no difference in Stephen Curry’s point average per game for the regular season games and playoff games for the Golden State Warriors (2016-2017 season). The alternative hypothesis is that Stephen Curry did score a different amount of points depending on the type of game.
+I got a mean difference of -3.721 and continued on with the randomization test. The histogram shows all the mean differences on the scrambled data- it is the expected distribution if there was no difference in points per game that Curry scored depending on the type of game. After computing a two-tailed test, I got a p-value of 0.1078, which means that the null hypothesis is not rejected.</p>
+<pre class="r"><code>steph &lt;- na.omit(steph)
+Successful.Shots_c&lt;-steph$Successful.Shots-mean(steph$Successful.Shots)
+PTS_c&lt;-steph$PTS-mean(steph$PTS)
+Minutes_c&lt;-steph$Minutes-mean(steph$Minutes)
+
+fit&lt;-lm(PTS ~ Minutes_c*Successful.Shots_c, data=steph)
+summary(fit)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = PTS ~ Minutes_c * Successful.Shots_c, data
+= steph)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -6.4164 -2.1652 0.0143 1.6262 9.9677
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 25.00929 0.30671 81.542 &lt;2e-16 ***
+## Minutes_c 0.11089 0.08083 1.372 0.173
+## Successful.Shots_c 2.50814 0.11087 22.623 &lt;2e-16 ***
+## Minutes_c:Successful.Shots_c -0.00355 0.01043 -0.340
+0.734
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 2.841 on 96 degrees of freedom
+## Multiple R-squared: 0.8963, Adjusted R-squared: 0.8931
+## F-statistic: 276.6 on 3 and 96 DF, p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>ggplot(steph,aes(PTS,Minutes_c, color= Successful.Shots_c))+geom_point()+geom_smooth(method = &#39;lm&#39;,se=F)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-4-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>resids&lt;-fit$residuals
+fitvals&lt;-fit$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col=&quot;red&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-4-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot()+geom_histogram(aes(resids),bins=20)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-4-3.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot()+geom_qq(aes(sample=resids))+geom_qq_line(aes(sample=resids), color=&#39;red&#39;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-4-4.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>bptest(fit)</code></pre>
+<pre><code>## 
+##  studentized Breusch-Pagan test
+## 
+## data:  fit
+## BP = 4.2832, df = 3, p-value = 0.2325</code></pre>
+<pre class="r"><code>summary(fit)$coef[,1:2]</code></pre>
+<pre><code>##                                  Estimate Std. Error
+## (Intercept)                  25.009292868 0.30670516
+## Minutes_c                     0.110890800 0.08083385
+## Successful.Shots_c            2.508143621 0.11086834
+## Minutes_c:Successful.Shots_c -0.003549876 0.01042981</code></pre>
+<pre class="r"><code>coeftest(fit, vcov=vcovHC(fit))[,1:2]</code></pre>
+<pre><code>##                                  Estimate  Std. Error
+## (Intercept)                  25.009292868 0.295103938
+## Minutes_c                     0.110890800 0.078310979
+## Successful.Shots_c            2.508143621 0.100976203
+## Minutes_c:Successful.Shots_c -0.003549876 0.008707117</code></pre>
+<pre class="r"><code>summary(fit)</code></pre>
+<pre><code>##
+## Call:
+## lm(formula = PTS ~ Minutes_c * Successful.Shots_c, data
+= steph)
+##
+## Residuals:
+## Min 1Q Median 3Q Max
+## -6.4164 -2.1652 0.0143 1.6262 9.9677
+##
+## Coefficients:
+## Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept) 25.00929 0.30671 81.542 &lt;2e-16 ***
+## Minutes_c 0.11089 0.08083 1.372 0.173
+## Successful.Shots_c 2.50814 0.11087 22.623 &lt;2e-16 ***
+## Minutes_c:Successful.Shots_c -0.00355 0.01043 -0.340
+0.734
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1
+##
+## Residual standard error: 2.841 on 96 degrees of freedom
+## Multiple R-squared: 0.8963, Adjusted R-squared: 0.8931
+## F-statistic: 276.6 on 3 and 96 DF, p-value: &lt; 2.2e-16</code></pre>
+<p>I built a linear regression with the mean-centered variables of successful shots per game, points per game, and minutes per game. The coefficient estimate for points per game is 0.0393, for successful shots per game it’s 2.508, minutes per game it’s 0.111, and the interaction of minutes and successful shots per game is -0.00355. These coefficient estimates for minutes and successful shots per game are the slopes for the equation holding the other variables constant. Basically, the intercept plus 0.111 times the value given for “Minutes_c” + 2.508 times the value given for “Successful.Shots_c” + -.0036 times the values of “Minutes_c” and “Successful.Shots_c” multiplied together equals the points per game Curry has.
+All the assumptions of linearity, normality, and homoskedasticity are held with the evidence of the plots.
+The robust standard errors are slightly lower than the uncorrected standard errors (uncorrected SE: 0.3067, 0.0808, 0.1109, etc; the robust SE: 0.2951, 0.0783, 0.101, etc). This means that we should probably use the robust standard errors as the default SEs since these error bars are tighter than the uncorrected.
+According to the R-squared value, my model explains .8931 of the variation in the outcome.</p>
+<pre class="r"><code>boot_dat&lt;- sample_frac(steph, replace=T)
+
+samp_distn&lt;-replicate(5000, {
+  boot_dat &lt;- sample_frac(steph, replace=T) 
+  fit5 &lt;- lm(PTS~Minutes*Successful.Shots, data=boot_dat) 
+  coef(fit5) 
+})
+
+samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% summarize_all(sd)</code></pre>
+<pre><code>## (Intercept) Minutes Successful.Shots
+Minutes:Successful.Shots
+## 1 2.980497 0.09414548 0.4198137 0.01202171</code></pre>
+<p>The bootstrapped standard errors of the linear regression are higher for each variable compared to the original and robust standard errors. This means that the bootstrapped model is not as tight and accurate as the past model.</p>
+<pre class="r"><code>stephen &lt;- steph %&gt;% mutate(y=ifelse(Result==&quot;W&quot;,1,0))
+stephen$result &lt;- factor(stephen$y,levels=c(&quot;W&quot;,&quot;L&quot;))
+head(stephen)</code></pre>
+<pre><code>## # A tibble: 6 x 23
+## Dates Opponent Score Minutes REB AST BLK STL PF TO PTS
+Type Result
+## &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+&lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;
+## 1 10/2… SA L 10… 34 3 4 0 0 1 4 26 REGU… L
+## 2 10/2… NO W 12… 34 1 8 0 1 3 4 23 REGU… W
+## 3 10/3… PHX W 10… 34 1 3 0 0 5 1 28 REGU… W
+## 4 11/1… POR W 12… 30 4 3 0 1 3 4 28 REGU… W
+## 5 11/3… OKC W 12… 30 1 7 1 2 1 1 21 REGU… W
+## 6 11/4… LAL L 97… 31 8 10 1 2 3 2 13 REGU… L
+## # … with 10 more variables: Successful.Shots &lt;dbl&gt;,
+X3.Points.Succesful &lt;dbl&gt;, Total.Shots &lt;dbl&gt;,
+## # Total.3.Points &lt;dbl&gt;, Successful.FT &lt;dbl&gt;, Total.FT
+&lt;dbl&gt;, Score.GS &lt;dbl&gt;,
+## # Score.Opponent &lt;dbl&gt;, y &lt;dbl&gt;, result &lt;fct&gt;</code></pre>
+<pre class="r"><code>fit1 &lt;-glm(y ~ Minutes+X3.Points.Succesful, data=stephen, family=&quot;binomial&quot;)
+coeftest(fit1)</code></pre>
+<pre><code>##
+## z test of coefficients:
+##
+## Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept) 1.674165 1.398242 1.1973 0.23118
+## Minutes -0.045217 0.044611 -1.0136 0.31078
+## X3.Points.Succesful 0.428257 0.173325 2.4708 0.01348 *
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1
+&#39; &#39; 1</code></pre>
+<pre class="r"><code>coef(fit1)%&gt;%exp%&gt;%round(5)%&gt;%data.frame</code></pre>
+<pre><code>##                           .
+## (Intercept)         5.33434
+## Minutes             0.95579
+## X3.Points.Succesful 1.53458</code></pre>
+<pre class="r"><code>stephen$probs &lt;- predict(fit1,type=&quot;response&quot;)
+stephen$y&lt;-as.factor(stephen$y)
+table(predict=as.numeric(stephen$probs&gt;.5), truth=stephen$y) %&gt;% addmargins</code></pre>
+<pre><code>##        truth
+## predict   0   1 Sum
+##     1    16  84 100
+##     Sum  16  84 100</code></pre>
+<pre class="r"><code>stephen$logit &lt;-predict(fit1,type=&quot;link&quot;)
+stephen %&gt;% ggplot(aes(logit, color=Result, fill=Result)) + geom_density(alpha=.3) +theme(legend.position = c(.8,.8)) +xlab(&quot;logit (log odds)&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(pROC)
+library(plotROC)
+ROCplot &lt;- ggplot(stephen)+geom_roc(aes(d=y, m=probs), n.cuts=0)
+plot(ROCplot)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-7-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>calc_auc(ROCplot)</code></pre>
+<pre><code>##   PANEL group AUC
+## 1     1     1  NA
+## 2     1     2  NA</code></pre>
+<p>The coefficient estimates from this logistic regression are 1.67 for the intercept (win/loss status), -0.0452 for minutes played each game, and 0.4283 for successful 3 pointers per game. These last two values (also slopes) mean that for decreasing minutes, we expect the rate of “wins” to increase and for increase 3 pointers made, we expect and increased rate of “wins.”
+With the confusion matrix, the TPR (sensitivity) value is 1, TNR (specificity) is 1, the accuracy is 1, and PPV is 1. This matrix and these values show that these variables in the regression are accurate in its predictions compared to the reality.
+The ROC curve shows the tradeoffs between the true positive and negative rates. This curve is not showing very high TPR or TNR values, but they do seem to be above .5. The AUC is 0.7295 which is reflected in this ROC curve.</p>
+<pre class="r"><code>class_diag&lt;-function(probs,truth){
+  if(is.numeric(truth)==FALSE &amp; is.logical(truth)==FALSE) truth&lt;-as.numeric(truth)-1
+  tab&lt;-table(factor(probs&gt;.5,levels=c(&quot;FALSE&quot;,&quot;TRUE&quot;)),truth)
+  prediction&lt;-ifelse(probs&gt;.5,1,0)
+  acc=mean(truth==prediction)
+  sens=mean(prediction[truth==1]==1)
+  spec=mean(prediction[truth==0]==0)
+  ppv=mean(truth[prediction==1]==1)
+  ord&lt;-order(probs, decreasing=TRUE)
+  probs &lt;- probs[ord]; truth &lt;- truth[ord]
+  TPR=cumsum(truth)/max(1,sum(truth))
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  dup&lt;-c(probs[-1]&gt;=probs[-length(probs)], FALSE)
+  TPR&lt;-c(0,TPR[!dup],1); FPR&lt;-c(0,FPR[!dup],1)
+  n &lt;- length(TPR)
+  auc&lt;- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+  data.frame(acc,sens,spec,ppv,auc)
+}</code></pre>
+<pre class="r"><code>fit2 &lt;-glm(y ~ X3.Points.Succesful, data=stephen, family=&quot;binomial&quot;)
+prob &lt;- predict(fit2,type=&quot;response&quot;)
+auc(stephen$y,prob)</code></pre>
+<pre><code>## Area under the curve: 0.705</code></pre>
+<pre class="r"><code>class_diag(prob, stephen$y)</code></pre>
+<pre><code>##    acc sens spec  ppv       auc
+## 1 0.84    1    0 0.84 0.7049851</code></pre>
+<pre class="r"><code>set.seed(1234)
+k=10 
+data&lt;-stephen[sample(nrow(stephen)),] 
+folds&lt;-cut(seq(1:nrow(stephen)),breaks=k,labels=F) 
+diags&lt;-NULL
+for(i in 1:k){
+  train&lt;-data[folds!=i,] 
+  test&lt;-data[folds==i,]
+  
+  truth&lt;-test$y
+
+  fit4&lt;-glm(y~X3.Points.Succesful,data=train,family=&quot;binomial&quot;)
+
+  prob&lt;-predict(fit4,newdata = test,type=&quot;response&quot;)
+
+  diags&lt;-rbind(diags,class_diag(prob,truth))
+}
+summarize_all(diags,mean)</code></pre>
+<pre><code>##    acc sens spec  ppv       auc
+## 1 0.84    1  NaN 0.84 0.7503472</code></pre>
+<p>After performing a 10-fold CV, the reported Accuracy is 0.84 (the proportion of correctly classified cases), the Sensitivity is 1 (true positive rate), and the PPV is 0.84 (the proportion of classified losses that actually are).</p>
+<pre class="r"><code>fit5 &lt;- lm(Successful.Shots~., data=steph)
+yhat &lt;-predict(fit5)
+mean((steph$Successful.Shots-yhat)^2)</code></pre>
+<pre><code>## [1] 2.539028e-28</code></pre>
+<pre class="r"><code>stephen1 &lt;- stephen %&gt;% mutate(results=ifelse(Result==&quot;W&quot;,1,0))
+stephen1$Dates &lt;- NULL
+stephen1$Score &lt;- NULL
+stephen1$Opponent &lt;- NULL
+stephen1$Type &lt;- NULL
+stephen1$Result &lt;- NULL
+stephen1$y &lt;- NULL
+stephen1$result &lt;- NULL
+head(stephen1)</code></pre>
+<pre><code>## # A tibble: 6 x 19
+## Minutes REB AST BLK STL PF TO PTS Successful.Shots
+X3.Points.Succe… Total.Shots
+## &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+&lt;dbl&gt; &lt;dbl&gt;
+## 1 34 3 4 0 0 1 4 26 9 3 18
+## 2 34 1 8 0 1 3 4 23 8 4 19
+## 3 34 1 3 0 0 5 1 28 9 5 17
+## 4 30 4 3 0 1 3 4 28 10 5 21
+## 5 30 1 7 1 2 1 1 21 6 2 14
+## 6 31 8 10 1 2 3 2 13 5 0 17
+## # … with 8 more variables: Total.3.Points &lt;dbl&gt;,
+Successful.FT &lt;dbl&gt;, Total.FT &lt;dbl&gt;,
+## # Score.GS &lt;dbl&gt;, Score.Opponent &lt;dbl&gt;, probs &lt;dbl&gt;,
+logit &lt;dbl&gt;, results &lt;dbl&gt;</code></pre>
+<pre class="r"><code>y&lt;-as.matrix(stephen$Successful.Shots)
+x&lt;-stephen1%&gt;%select(-Successful.Shots)%&gt;%mutate_all(scale)%&gt;%as.matrix
+head(x)</code></pre>
+<pre><code>## Minutes REB AST BLK STL PF TO PTS
+## [1,] 0.1972447 -0.6658315 -0.9474226 -0.4396214
+-1.1722371 -0.8617058 0.5936473 0.1185364
+## [2,] 0.1972447 -1.4828028 0.6057292 -0.4396214
+-0.5099563 0.5394418 0.5936473 -0.2267153
+## [3,] 0.1972447 -1.4828028 -1.3357106 -0.4396214
+-1.1722371 1.9405894 -1.1187967 0.3487043
+## [4,] -0.4004666 -0.2573459 -1.3357106 -0.4396214
+-0.5099563 0.5394418 0.5936473 0.3487043
+## [5,] -0.4004666 -1.4828028 0.2174413 1.6538137 0.1523246
+-0.8617058 -1.1187967 -0.4568831
+## [6,] -0.2510388 1.3765965 1.3823052 1.6538137 0.1523246
+0.5394418 -0.5479821 -1.3775544
+## X3.Points.Succesful Total.Shots Total.3.Points
+Successful.FT Total.FT Score.GS
+## [1,] -0.432861158 0.05717894 0.09028605 0.2501502
+0.39691433 -1.2141301
+## [2,] -0.004285754 0.25434769 0.09028605 -0.4447114
+-0.24327007 0.3361231
+## [3,] 0.424289650 -0.13998981 -0.55461432 0.2501502
+0.07682213 -0.7913338
+## [4,] 0.424289650 0.64868519 0.09028605 -0.4447114
+-0.24327007 0.6884534
+## [5,] -0.861436563 -0.73149606 -1.19951469 0.9450118
+1.03709873 0.3361231
+## [6,] -1.718587371 -0.13998981 0.09028605 -0.4447114
+-0.56336227 -1.4255283
+## Score.Opponent probs logit results
+## [1,] 1.71861601 -0.3365658 -0.51280570 -2.2798026
+## [2,] 0.63134312 0.2357021 -0.06664386 0.4342481
+## [3,] -0.38344490 0.6555856 0.37951798 0.4342481
+## [4,] -0.09350547 0.7941304 0.56794901 0.4342481
+## [5,] -0.67338434 -0.7441799 -0.77053650 0.4342481
+## [6,] 0.84879770 -2.6627860 -1.70996793 -2.2798026</code></pre>
+<pre class="r"><code>cv&lt;-cv.glmnet(x,y)
+lasso1&lt;-glmnet(x,y,lambda=cv$lambda.1se)
+coef(lasso1)</code></pre>
+<pre><code>## 19 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                                s0
+## (Intercept)          8.3400000000
+## Minutes              .           
+## REB                  .           
+## AST                  .           
+## BLK                  .           
+## STL                  .           
+## PF                   .           
+## TO                   .           
+## PTS                  4.0524431889
+## X3.Points.Succesful -0.9141181173
+## Total.Shots          0.0810439589
+## Total.3.Points      -0.0171452470
+## Successful.FT       -1.2984617422
+## Total.FT            -0.0009710057
+## Score.GS             .           
+## Score.Opponent       .           
+## probs               -0.0336016847
+## logit                .           
+## results              .</code></pre>
+<pre class="r"><code>set.seed(1234)
+k=10 
+data1&lt;-stephen[sample(nrow(stephen)),] 
+folds&lt;-cut(seq(1:nrow(stephen)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){
+  train&lt;-data1[folds!=i,]
+  test&lt;-data1[folds==i,]
+  fit7&lt;-lm(Successful.Shots~Total.Shots+X3.Points.Succesful+Total.3.Points+Successful.FT+Total.FT+PTS,data=train)
+  yhat3&lt;-predict(fit7,newdata=test)
+  diags&lt;-mean((test$Successful.Shots-yhat3)^2)
+}
+mean(diags)</code></pre>
+<pre><code>## [1] 1.017631e-29</code></pre>
+<p>The LASSO regression showed the variables that will be retained are Total.Shots, X3.Points.Succesful, Total.3.Points, Successful.FT, Total.FT, and PTS since these variables all had a numeric value. The CV prediction error is super low, with a vlue of 1.018e-29. This is lower than the mean squared error previously calculated, which had a value of 2.54e-28.</p>
+</div>
