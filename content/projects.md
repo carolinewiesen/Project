@@ -1,11 +1,17 @@
 ---
 categories:
 - projects
-date: "2016-10-02T22:55:05-04:00"
 showpagemeta: false
 tags:
 - projects
 title: Projects
+showpagemeta: false
+- projects
+title: Exploratory Data Analysis with Tidyverse Tools
+showpagemeta: false
+- projects
+title: Modeling, Testing, and Predicting
+showpagemeta: false
 ---
 ## Projects 
 
