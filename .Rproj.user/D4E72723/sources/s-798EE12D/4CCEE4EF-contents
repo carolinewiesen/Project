@@ -13,7 +13,7 @@ theme = "hugo-sustain"
 [params]
   avatar = "dsc_6127.jpg"
   author = "Caroline Wiesen"
-  description = "Describe your website"
+  description = "Welcome to my website!"
 
   # Custom assets can be linked with their paths relative to static/
   custom_css = []
@@ -41,4 +41,9 @@ theme = "hugo-sustain"
   name = "resume"
   identifier = "resume"
   weight = 300
-  url = "/resume/"
+  url = "/resume.pdf"
+[[menu.main]]
+  name = "about"
+  identifier = "about"
+  weight = 400
+  url = "/post/"

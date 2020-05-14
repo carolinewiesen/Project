@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="Caroline Wiesen" />
-    <meta name="description" content="Describe your website">
+    <meta name="description" content="Welcome to my website!">
     <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
     <title>Project 2: Modeling, Testing, and Predicting</title>
     <meta name="generator" content="Hugo 0.70.0" />
@@ -44,7 +44,9 @@
         
         <li><a href="/projects/">PROJECTS</a></li>
         
-        <li><a href="/resume/">RESUME</a></li>
+        <li><a href="/resume.pdf">RESUME</a></li>
+        
+        <li><a href="/post/">ABOUT</a></li>
         
       
       </ul>
@@ -53,23 +55,12 @@
 </nav>
 
       
-      <div class="container">
-        <div class="blog-post">
-          <h3>
-            <strong><a href="/project2/">Project 2: Modeling, Testing, and Predicting</a></strong>
-          </h3>
-        </div>
-        <div class="blog-title">
-          <h4>
-          January 1, 0001
-            &nbsp;&nbsp;
-            
-          </h4>
-        </div>
-        <div class="panel panel-default">
-          <div class="panel-body">
-            <div class="blogpost">
-              
+        <section id="projects">
+  <div class="container">
+    <h3>Projects</h3>
+    <div class="panel panel-default">
+      <div class="panel-body">
+        
 
 
 <div id="caroline-wiesen-cgw685" class="section level1">
@@ -181,7 +172,7 @@ rand_dist[i]&lt;-mean(new[new$condition==&quot;regular1&quot;,]$points)-
 {hist(rand_dist,main=&quot;&quot;,ylab=&quot;&quot;); abline(v = -3.721474, col=&quot;orange&quot;)}</code></pre>
 <p><img src="/project2_files/figure-html/unnamed-chunk-3-2.png" width="768" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>mean(rand_dist&lt; -3.721474 | rand_dist &gt; 3.721474)</code></pre>
-<pre><code>## [1] 0.1098</code></pre>
+<pre><code>## [1] 0.1154</code></pre>
 <p>The null hypothesis for this test is that there is no difference in Stephen Curry’s point average per game for the regular season games and playoff games for the Golden State Warriors (2016-2017 season). The alternative hypothesis is that Stephen Curry did score a different amount of points depending on the type of game.
 I got a mean difference of -3.721 and continued on with the randomization test. The histogram shows all the mean differences on the scrambled data- it is the expected distribution if there was no difference in points per game that Curry scored depending on the type of game. After computing a two-tailed test, I got a p-value of 0.1078, which means that the null hypothesis is not rejected.</p>
 <pre class="r"><code>steph &lt;- na.omit(steph)
@@ -281,7 +272,7 @@ samp_distn&lt;-replicate(5000, {
 samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% summarize_all(sd)</code></pre>
 <pre><code>## (Intercept) Minutes Successful.Shots
 Minutes:Successful.Shots
-## 1 2.980497 0.09414548 0.4198137 0.01202171</code></pre>
+## 1 3.442852 0.1080847 0.4564236 0.01312039</code></pre>
 <p>The bootstrapped standard errors of the linear regression are higher for each variable compared to the original and robust standard errors. This means that the bootstrapped model is not as tight and accurate as the past model.</p>
 <pre class="r"><code>stephen &lt;- steph %&gt;% mutate(y=ifelse(Result==&quot;W&quot;,1,0))
 stephen$result &lt;- factor(stephen$y,levels=c(&quot;W&quot;,&quot;L&quot;))
@@ -493,35 +484,11 @@ mean(diags)</code></pre>
 <p>The LASSO regression showed the variables that will be retained are Total.Shots, X3.Points.Succesful, Total.3.Points, Successful.FT, Total.FT, and PTS since these variables all had a numeric value. The CV prediction error is super low, with a vlue of 1.018e-29. This is lower than the mean squared error previously calculated, which had a value of 2.54e-28.</p>
 </div>
 
-              <hr>
-              <div class="related-posts">
-                <h5>Related Posts</h5>
-                
-              </div>
-            </div>
-          </div>
-          <hr>
-        <div class="disqus">
-  <div id="disqus_thread"></div>
-  <script type="text/javascript">
-
-    (function() {
-      
-      
-      if (window.location.hostname == "localhost")
-        return;
-
-      var disqus_shortname = '';
-      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-  </script>
-  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
-</div>
-        </div>
       </div>
+    </div>
+  </div>
+</section>
+
       
     </div>
 

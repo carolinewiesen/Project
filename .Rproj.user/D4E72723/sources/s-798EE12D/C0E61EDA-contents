@@ -1,0 +1,263 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "SDS348"
+showpagemeta: false
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: yes
+---
+
+# Caroline Wiesen, cgw685
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+```{r}
+library(readxl)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(cluster)
+library(formatR)
+library(lmtest)
+library(sandwich)
+library(glmnet)
+
+steph <- read_csv("Stephen.Curry.Stats.csv")
+steph$Successful.Shots <- steph$'Successful Shots'
+steph$'Successful Shots' <- NULL
+steph$X3.Points.Succesful <- steph$'3 Points Succesful'
+steph$'3 Points Succesful' <- NULL
+steph$Total.Shots <- steph$'Total Shots'
+steph$'Total Shots' <- NULL
+steph$Total.3.Points <- steph$'Total 3 Points'
+steph$'Total 3 Points' <- NULL
+steph$Successful.FT <- steph$'Successful FT'
+steph$'Successful FT' <- NULL
+steph$Total.FT <- steph$'Total FT'
+steph$'Total FT' <- NULL
+steph$Score.GS <- steph$'Score GS'
+steph$'Score GS' <- NULL
+steph$Score.Opponent <- steph$'Score Opponent'
+steph$'Score Opponent' <- NULL
+```
+
+The dataset used for this project is originally called "Stephen Curry Stats" and it has many different variables that are important to the game of basketball. It comprises his statistics from the 2016-2017 NBA season and has variables such as "PTS" which show total points per game, "Result" which shows win/loss status of each game, "3.Points.Successful" which show total number of made 3-pointers per game, and more. There are 100 observations in this dataset (100 games that are recorded with the statistics).
+
+
+```{r}
+man1<-manova(cbind(PTS, Minutes, Total.Shots, Total.3.Points, Total.FT, STL)~ Type, data = steph)
+summary(man1)
+```
+
+Since the p-value is listed at 0.2214, which is too big to be significant, I cannot move along with performing more tests, such as an ANOVA and post-hoc test. The assumptions for this MANOVA are many, and this MANOVA would not have passed all of them since it was not significant. The assumptions are random samples, independent observations, multivariate normality of DVs, homogeneity of within-group covariance matrices, linear relationships among DVs, no extreme univariate or multivariate outliers, and no multicollinearity. 
+
+```{r}
+steph %>% group_by(Type, Dates) %>% summarize(mean(PTS))
+regular <- c(24,24,20,24,22,24,27,21,28,43,0,35,40,30,26,23,28,28,33,30,35,16,20,22,31,24,34,25,21,13,46,24,28,17,22,30,8,19,25,15,25,15,28,31,14,13,19,26,39,18,26,11,13,21,29,35,27,19,25,35,13,26,0,29,25,28,23,23,17,27,21,32,29,24,31,24,23,28,20,42,19,42,0)
+playoffs <- c(40,29,21,36,29,19,34,37,22,23,23,30,28,34,32,26,14)
+
+reg <- steph %>% filter(Type == 'REGULAR SEASON STATS') %>% select('PTS')
+play <- steph %>% filter(grepl("inals", Type)) %>% select('PTS')
+regular1 <- c(reg)
+playoffs1 <- c(play)
+
+t.test(regular,playoffs)
+bball1<-data.frame(condition=c(rep("regular1",83),rep("playoffs1",17)),points=c(regular,playoffs))
+head(bball1)
+ggplot(bball1,aes(points,fill=condition))+geom_histogram(bins=17)+facet_wrap(~condition,ncol=2)+theme(legend.position="none")
+head(bball1)
+bball1%>%group_by(condition)%>%summarize(means=mean(points))%>%summarize(`mean_diff:`=diff(means))
+
+rand_dist<-vector()
+for(i in 1:5000){
+new<-data.frame(points=sample(bball1$points),condition=bball1$condition)
+rand_dist[i]<-mean(new[new$condition=="regular1",]$points)-
+              mean(new[new$condition=="playoffs1",]$points)}
+{hist(rand_dist,main="",ylab=""); abline(v = -3.721474, col="orange")}
+mean(rand_dist< -3.721474 | rand_dist > 3.721474)
+```
+
+The null hypothesis for this test is that there is no difference in Stephen Curry's point average per game for the regular season games and playoff games for the Golden State Warriors (2016-2017 season). The alternative hypothesis is that Stephen Curry did score a different amount of points depending on the type of game. 
+I got a mean difference of -3.721 and continued on with the randomization test. The histogram shows all the mean differences on the scrambled data- it is the expected distribution if there was no difference in points per game that Curry scored depending on the type of game. After computing a two-tailed test, I got a p-value of 0.1078, which means that the null hypothesis is not rejected.
+
+```{r}
+steph <- na.omit(steph)
+Successful.Shots_c<-steph$Successful.Shots-mean(steph$Successful.Shots)
+PTS_c<-steph$PTS-mean(steph$PTS)
+Minutes_c<-steph$Minutes-mean(steph$Minutes)
+
+fit<-lm(PTS ~ Minutes_c*Successful.Shots_c, data=steph)
+summary(fit)
+ggplot(steph,aes(PTS,Minutes_c, color= Successful.Shots_c))+geom_point()+geom_smooth(method = 'lm',se=F)
+
+resids<-fit$residuals
+fitvals<-fit$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col="red")
+ggplot()+geom_histogram(aes(resids),bins=20)
+ggplot()+geom_qq(aes(sample=resids))+geom_qq_line(aes(sample=resids), color='red')
+
+bptest(fit)
+summary(fit)$coef[,1:2]
+coeftest(fit, vcov=vcovHC(fit))[,1:2]
+summary(fit)
+```
+I built a linear regression with the mean-centered variables of successful shots per game, points per game, and minutes per game. The coefficient estimate for points per game is 0.0393, for successful shots per game it's 2.508, minutes per game it's 0.111, and the interaction of minutes and successful shots per game is -0.00355. These coefficient estimates for minutes and successful shots per game are the slopes for the equation holding the other variables constant. Basically, the intercept plus 0.111 times the value given for "Minutes_c" + 2.508 times the value given for "Successful.Shots_c" + -.0036 times the values of "Minutes_c" and "Successful.Shots_c" multiplied together equals the points per game Curry has. 
+All the assumptions of linearity, normality, and homoskedasticity are held with the evidence of the plots. 
+The robust standard errors are slightly lower than the uncorrected standard errors (uncorrected SE: 0.3067, 0.0808, 0.1109, etc; the robust SE: 0.2951, 0.0783, 0.101, etc). This means that we should probably use the robust standard errors as the default SEs since these error bars are tighter than the uncorrected. 
+According to the R-squared value, my model explains .8931 of the variation in the outcome.
+
+```{r}
+boot_dat<- sample_frac(steph, replace=T)
+
+samp_distn<-replicate(5000, {
+  boot_dat <- sample_frac(steph, replace=T) 
+  fit5 <- lm(PTS~Minutes*Successful.Shots, data=boot_dat) 
+  coef(fit5) 
+})
+
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+```
+
+The bootstrapped standard errors of the linear regression are higher for each variable compared to the original and robust standard errors. This means that the bootstrapped model is not as tight and accurate as the past model.
+
+```{r}
+stephen <- steph %>% mutate(y=ifelse(Result=="W",1,0))
+stephen$result <- factor(stephen$y,levels=c("W","L"))
+head(stephen)
+fit1 <-glm(y ~ Minutes+X3.Points.Succesful, data=stephen, family="binomial")
+coeftest(fit1)
+coef(fit1)%>%exp%>%round(5)%>%data.frame
+
+stephen$probs <- predict(fit1,type="response")
+stephen$y<-as.factor(stephen$y)
+table(predict=as.numeric(stephen$probs>.5), truth=stephen$y) %>% addmargins
+
+stephen$logit <-predict(fit1,type="link")
+stephen %>% ggplot(aes(logit, color=Result, fill=Result)) + geom_density(alpha=.3) +theme(legend.position = c(.8,.8)) +xlab("logit (log odds)")
+```
+
+```{r}
+library(pROC)
+library(plotROC)
+ROCplot <- ggplot(stephen)+geom_roc(aes(d=y, m=probs), n.cuts=0)
+plot(ROCplot)
+calc_auc(ROCplot)
+```
+
+The coefficient estimates from this logistic regression are 1.67 for the intercept (win/loss status), -0.0452 for minutes played each game, and 0.4283 for successful 3 pointers per game. These last two values (also slopes) mean that for decreasing minutes, we expect the rate of "wins" to increase and for increase 3 pointers made, we expect and increased rate of "wins." 
+With the confusion matrix, the TPR (sensitivity) value is 1, TNR (specificity) is 1, the accuracy is 1, and PPV is 1. This matrix and these values show that these variables in the regression are accurate in its predictions compared to the reality. 
+The ROC curve shows the tradeoffs between the true positive and negative rates. This curve is not showing very high TPR or TNR values, but they do seem to be above .5. The AUC is 0.7295 which is reflected in this ROC curve.
+
+```{r}
+class_diag<-function(probs,truth){
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+  prediction<-ifelse(probs>.5,1,0)
+  acc=mean(truth==prediction)
+  sens=mean(prediction[truth==1]==1)
+  spec=mean(prediction[truth==0]==0)
+  ppv=mean(truth[prediction==1]==1)
+  ord<-order(probs, decreasing=TRUE)
+  probs <- probs[ord]; truth <- truth[ord]
+  TPR=cumsum(truth)/max(1,sum(truth))
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+  data.frame(acc,sens,spec,ppv,auc)
+}
+```
+
+```{r}
+fit2 <-glm(y ~ X3.Points.Succesful, data=stephen, family="binomial")
+prob <- predict(fit2,type="response")
+auc(stephen$y,prob)
+class_diag(prob, stephen$y)
+
+set.seed(1234)
+k=10 
+data<-stephen[sample(nrow(stephen)),] 
+folds<-cut(seq(1:nrow(stephen)),breaks=k,labels=F) 
+diags<-NULL
+for(i in 1:k){
+  train<-data[folds!=i,] 
+  test<-data[folds==i,]
+  
+  truth<-test$y
+
+  fit4<-glm(y~X3.Points.Succesful,data=train,family="binomial")
+
+  prob<-predict(fit4,newdata = test,type="response")
+
+  diags<-rbind(diags,class_diag(prob,truth))
+}
+summarize_all(diags,mean)
+```
+
+After performing a 10-fold CV, the reported Accuracy is 0.84 (the proportion of correctly classified cases), the Sensitivity is 1 (true positive rate), and the PPV is 0.84 (the proportion of classified losses that actually are). 
+
+```{r}
+fit5 <- lm(Successful.Shots~., data=steph)
+yhat <-predict(fit5)
+mean((steph$Successful.Shots-yhat)^2)
+
+stephen1 <- stephen %>% mutate(results=ifelse(Result=="W",1,0))
+stephen1$Dates <- NULL
+stephen1$Score <- NULL
+stephen1$Opponent <- NULL
+stephen1$Type <- NULL
+stephen1$Result <- NULL
+stephen1$y <- NULL
+stephen1$result <- NULL
+head(stephen1)
+
+y<-as.matrix(stephen$Successful.Shots)
+x<-stephen1%>%select(-Successful.Shots)%>%mutate_all(scale)%>%as.matrix
+head(x)
+cv<-cv.glmnet(x,y)
+lasso1<-glmnet(x,y,lambda=cv$lambda.1se)
+coef(lasso1)
+
+set.seed(1234)
+k=10 
+data1<-stephen[sample(nrow(stephen)),] 
+folds<-cut(seq(1:nrow(stephen)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){
+  train<-data1[folds!=i,]
+  test<-data1[folds==i,]
+  fit7<-lm(Successful.Shots~Total.Shots+X3.Points.Succesful+Total.3.Points+Successful.FT+Total.FT+PTS,data=train)
+  yhat3<-predict(fit7,newdata=test)
+  diags<-mean((test$Successful.Shots-yhat3)^2)
+}
+mean(diags)
+```
+
+The LASSO regression showed the variables that will be retained are Total.Shots, X3.Points.Succesful, Total.3.Points, Successful.FT, Total.FT, and PTS since these variables all had a numeric value. The CV prediction error is super low, with a vlue of 1.018e-29. This is lower than the mean squared error previously calculated, which had a value of 2.54e-28. 

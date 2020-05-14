@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1589483100060.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D84AA513",
+    "lastKnownWriteTime" : 1589491227,
+    "last_content_update" : 1589491227035,
+    "path" : "~/Desktop/Website1/content/blog/2020-05-14-blog.Rmd",
+    "project_path" : "content/blog/2020-05-14-blog.Rmd",
+    "properties" : {
+        "cursorPosition" : "6,8",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 12,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

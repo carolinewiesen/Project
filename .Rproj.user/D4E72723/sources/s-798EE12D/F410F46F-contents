@@ -1,0 +1,341 @@
+---
+title: "Exploratory Data Analysis with Tidyverse Tools"
+output:
+  pdf_document: default
+  html_document: default
+showpagemeta: false
+---
+
+
+
+<p>{r setup, include=FALSE}
+knitr::opts_chunk<span class="math inline">\(set(echo = TRUE) library(knitr) opts_chunk\)</span>set(fig.align=“center”, fig.height=5, message=FALSE, fig.width=8,tidy.opts=list(width.cutoff=60),tidy=TRUE, R.options=list(max.print=100))</p>
+<hr />
+<div id="project-1" class="section level1">
+<h1>Project 1</h1>
+</div>
+<div id="caroline-wiesen-cgw685" class="section level1">
+<h1>Caroline Wiesen, cgw685</h1>
+<div id="section" class="section level2">
+<h2>3/15/2020</h2>
+<p>output:
+html_document: default
+pdf_document: default
+editor_options:
+chunk_output_type: console
+—</p>
+<pre class="r"><code># Data sets
+library(&quot;readxl&quot;)
+insurance &lt;- read_excel(&quot;insurance.xlsx&quot;)
+education &lt;- read_excel(&quot;education.xlsx&quot;)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(cluster)</code></pre>
+<p>Education has always been very interesting to me- I am an inspiring biology teacher and love to gather more information on education. I decided to investigate the relationship between education and those that have or do not have insurance for the reasons listed prior. Insurance is a very important aspect for living, and I wanted to see if the degree of education one obtains is related to the proportion of insurance for each county in Texas. I assumed that there is a correlation since insurance costs money and a higher education degree most likely leads to a higher salary.</p>
+<p>The datasets that I have are called “education” and “insurance”; education has 7 variables that give the proportion of those that do not have a high school degree and those that have a high school degree, college, bachelor’s, masters, professional, and doctorate degree. The insurance dadatset has three variables that describe the proportion of those that have insurance from ages 0-19, 18-64, and total under 65 years. I got these datasets from Social Explorer through the UT library.</p>
+<pre class="r"><code>education1 &lt;- education %&gt;% pivot_longer(c(&quot;Anderson County, Texas&quot;:&quot;Wilson County, Texas&quot;), 
+    names_to = &quot;county&quot;, values_to = &quot;percent&quot;) %&gt;% pivot_wider(names_from = &quot;education&quot;, 
+    values_from = &quot;percent&quot;)
+
+insurance1 &lt;- insurance %&gt;% pivot_longer(c(&quot;Anderson County, Texas&quot;:&quot;Wilson County, Texas&quot;), 
+    names_to = &quot;county&quot;, values_to = &quot;percent&quot;) %&gt;% pivot_wider(names_from = &quot;insurance&quot;, 
+    values_from = &quot;percent&quot;)</code></pre>
+<p>In order to have the variables in the right places, I had to swtich them around for each dataset. For example, the county names were originally on the y axis and the varaibles that I had listed for the education dataset were on the x axis. By using the function pivot_longer, I was able to accomplish this for both datasets.</p>
+<pre class="r"><code>project &lt;- insurance1 %&gt;% full_join(education1)
+names(project) &lt;- c(&quot;county&quot;, &quot;young_ins&quot;, &quot;middle_ins&quot;, &quot;no_insurance_all&quot;, 
+    &quot;lths&quot;, &quot;hs&quot;, &quot;college&quot;, &quot;bachelor&quot;, &quot;masters&quot;, &quot;prof&quot;, &quot;doct&quot;)
+project &lt;- project %&gt;% mutate(range_of_insurance = case_when(no_insurance_all &lt; 
+    0.26 ~ &quot;Low&quot;, no_insurance_all &gt; 0.26 ~ &quot;High&quot;))</code></pre>
+<p>I used full_join to join my datasets since I knew that the counties in each dataset were the same and wanted to keep all the rows in case there may have been one that I didn’t account for. I would then be able to notice this mistake after joining the datasets. There were no rows that were dropped after joining.</p>
+<pre class="r"><code>project %&gt;% summarize(mean_lths_edu = mean(lths, na.rm = T), 
+    min_lths_edu = min(lths, na.rm = T))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   mean_lths_edu min_lths_edu
+##           &lt;dbl&gt;        &lt;dbl&gt;
+## 1         0.168         0.07</code></pre>
+<pre class="r"><code>project %&gt;% group_by(county)</code></pre>
+<pre><code>## # A tibble: 58 x 12
+## # Groups:   county [58]
+##    county young_ins middle_ins no_insurance_all   lths    hs college bachelor
+##    &lt;chr&gt;      &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+##  1 Ander…     0.15       0.279            0.239 0.198  0.802   0.436    0.118
+##  2 Austi…     0.182      0.281            0.25  0.176  0.824   0.532    0.21 
+##  3 Bastr…     0.178      0.314            0.271 0.194  0.806   0.508    0.184
+##  4 Bell …     0.103      0.231            0.189 0.0970 0.903   0.63     0.232
+##  5 Bexar…     0.105      0.277            0.223 0.166  0.834   0.581    0.269
+##  6 Blanc…     0.233      0.307            0.286 0.101  0.899   0.581    0.288
+##  7 Bosqu…     0.185      0.312            0.274 0.177  0.823   0.474    0.177
+##  8 Brazo…     0.108      0.247            0.202 0.133  0.867   0.605    0.287
+##  9 Brazo…     0.131      0.248            0.218 0.144  0.856   0.66     0.398
+## 10 Burle…     0.187      0.317            0.279 0.196  0.804   0.412    0.148
+## # … with 48 more rows, and 4 more variables: masters &lt;dbl&gt;, prof &lt;dbl&gt;,
+## #   doct &lt;dbl&gt;, range_of_insurance &lt;chr&gt;</code></pre>
+<pre class="r"><code>project %&gt;% arrange(desc(county)) %&gt;% select(county, contains(&quot;ins&quot;))</code></pre>
+<pre><code>## # A tibble: 58 x 5
+##    county                young_ins middle_ins no_insurance_all range_of_insuran…
+##    &lt;chr&gt;                     &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt; &lt;chr&gt;            
+##  1 Wilson County, Texas      0.128      0.229            0.198 Low              
+##  2 Williamson County, T…     0.113      0.198            0.17  Low              
+##  3 Wharton County, Texas     0.15       0.316            0.263 High             
+##  4 Washington County, T…     0.167      0.272            0.241 Low              
+##  5 Waller County, Texas      0.176      0.334            0.286 High             
+##  6 Walker County, Texas      0.149      0.28             0.247 Low              
+##  7 Victoria County, Tex…     0.12       0.283            0.231 Low              
+##  8 Trinity County, Texas     0.153      0.309            0.266 High             
+##  9 Travis County, Texas      0.109      0.247            0.21  Low              
+## 10 San Jacinto County, …     0.165      0.315            0.272 High             
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% mutate(no_insurance_pctile = ntile(no_insurance_all, 
+    100))</code></pre>
+<pre><code>## # A tibble: 58 x 13
+##    county young_ins middle_ins no_insurance_all   lths    hs college bachelor
+##    &lt;chr&gt;      &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+##  1 Ander…     0.15       0.279            0.239 0.198  0.802   0.436    0.118
+##  2 Austi…     0.182      0.281            0.25  0.176  0.824   0.532    0.21 
+##  3 Bastr…     0.178      0.314            0.271 0.194  0.806   0.508    0.184
+##  4 Bell …     0.103      0.231            0.189 0.0970 0.903   0.63     0.232
+##  5 Bexar…     0.105      0.277            0.223 0.166  0.834   0.581    0.269
+##  6 Blanc…     0.233      0.307            0.286 0.101  0.899   0.581    0.288
+##  7 Bosqu…     0.185      0.312            0.274 0.177  0.823   0.474    0.177
+##  8 Brazo…     0.108      0.247            0.202 0.133  0.867   0.605    0.287
+##  9 Brazo…     0.131      0.248            0.218 0.144  0.856   0.66     0.398
+## 10 Burle…     0.187      0.317            0.279 0.196  0.804   0.412    0.148
+## # … with 48 more rows, and 5 more variables: masters &lt;dbl&gt;, prof &lt;dbl&gt;,
+## #   doct &lt;dbl&gt;, range_of_insurance &lt;chr&gt;, no_insurance_pctile &lt;int&gt;</code></pre>
+<pre class="r"><code>project %&gt;% filter(lths == 0.174)</code></pre>
+<pre><code>## # A tibble: 3 x 12
+##   county young_ins middle_ins no_insurance_all  lths    hs college bachelor
+##   &lt;chr&gt;      &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1 Rober…     0.166      0.33             0.28  0.174 0.826   0.473    0.174
+## 2 Walke…     0.149      0.28             0.247 0.174 0.826   0.46     0.195
+## 3 Washi…     0.167      0.272            0.241 0.174 0.826   0.512    0.221
+## # … with 4 more variables: masters &lt;dbl&gt;, prof &lt;dbl&gt;, doct &lt;dbl&gt;,
+## #   range_of_insurance &lt;chr&gt;</code></pre>
+<pre class="r"><code>project %&gt;% group_by(range_of_insurance, county) %&gt;% summarize(max_masters = max(masters))</code></pre>
+<pre><code>## # A tibble: 58 x 3
+## # Groups:   range_of_insurance [2]
+##    range_of_insurance county                 max_masters
+##    &lt;chr&gt;              &lt;chr&gt;                        &lt;dbl&gt;
+##  1 High               Bastrop County, Texas        0.059
+##  2 High               Blanco County, Texas         0.108
+##  3 High               Bosque County, Texas         0.052
+##  4 High               Burleson County, Texas       0.053
+##  5 High               Burnet County, Texas         0.074
+##  6 High               Colorado County, Texas       0.046
+##  7 High               Falls County, Texas          0.03 
+##  8 High               Fayette County, Texas        0.043
+##  9 High               Gonzales County, Texas       0.039
+## 10 High               Grimes County, Texas         0.044
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% group_by(county) %&gt;% summarize(min_masters = min(masters))</code></pre>
+<pre><code>## # A tibble: 58 x 2
+##    county                 min_masters
+##    &lt;chr&gt;                        &lt;dbl&gt;
+##  1 Anderson County, Texas      0.042 
+##  2 Austin County, Texas        0.062 
+##  3 Bastrop County, Texas       0.059 
+##  4 Bell County, Texas          0.08  
+##  5 Bexar County, Texas         0.0970
+##  6 Blanco County, Texas        0.108 
+##  7 Bosque County, Texas        0.052 
+##  8 Brazoria County, Texas      0.103 
+##  9 Brazos County, Texas        0.183 
+## 10 Burleson County, Texas      0.053 
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% group_by(range_of_insurance, county) %&gt;% summarize(max_college = max(college))</code></pre>
+<pre><code>## # A tibble: 58 x 3
+## # Groups:   range_of_insurance [2]
+##    range_of_insurance county                 max_college
+##    &lt;chr&gt;              &lt;chr&gt;                        &lt;dbl&gt;
+##  1 High               Bastrop County, Texas        0.508
+##  2 High               Blanco County, Texas         0.581
+##  3 High               Bosque County, Texas         0.474
+##  4 High               Burleson County, Texas       0.412
+##  5 High               Burnet County, Texas         0.548
+##  6 High               Colorado County, Texas       0.444
+##  7 High               Falls County, Texas          0.393
+##  8 High               Fayette County, Texas        0.445
+##  9 High               Gonzales County, Texas       0.387
+## 10 High               Grimes County, Texas         0.427
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% group_by(range_of_insurance, county) %&gt;% summarize(mean(prof))</code></pre>
+<pre><code>## # A tibble: 58 x 3
+## # Groups:   range_of_insurance [2]
+##    range_of_insurance county                 `mean(prof)`
+##    &lt;chr&gt;              &lt;chr&gt;                         &lt;dbl&gt;
+##  1 High               Bastrop County, Texas       0.02   
+##  2 High               Blanco County, Texas        0.037  
+##  3 High               Bosque County, Texas        0.01   
+##  4 High               Burleson County, Texas      0.012  
+##  5 High               Burnet County, Texas        0.015  
+##  6 High               Colorado County, Texas      0.015  
+##  7 High               Falls County, Texas         0.00700
+##  8 High               Fayette County, Texas       0.013  
+##  9 High               Gonzales County, Texas      0.011  
+## 10 High               Grimes County, Texas        0.008  
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% summarize(max(no_insurance_all))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `max(no_insurance_all)`
+##                     &lt;dbl&gt;
+## 1                   0.307</code></pre>
+<pre class="r"><code>project %&gt;% summarize(max(doct))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `max(doct)`
+##         &lt;dbl&gt;
+## 1       0.055</code></pre>
+<pre class="r"><code>project %&gt;% summarize(min(bachelor))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `min(bachelor)`
+##             &lt;dbl&gt;
+## 1             0.1</code></pre>
+<pre class="r"><code>project %&gt;% summarize(min(lths))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `min(lths)`
+##         &lt;dbl&gt;
+## 1        0.07</code></pre>
+<pre class="r"><code>project %&gt;% group_by(range_of_insurance, county) %&gt;% summarize(max(lths))</code></pre>
+<pre><code>## # A tibble: 58 x 3
+## # Groups:   range_of_insurance [2]
+##    range_of_insurance county                 `max(lths)`
+##    &lt;chr&gt;              &lt;chr&gt;                        &lt;dbl&gt;
+##  1 High               Bastrop County, Texas        0.194
+##  2 High               Blanco County, Texas         0.101
+##  3 High               Bosque County, Texas         0.177
+##  4 High               Burleson County, Texas       0.196
+##  5 High               Burnet County, Texas         0.139
+##  6 High               Colorado County, Texas       0.182
+##  7 High               Falls County, Texas          0.243
+##  8 High               Fayette County, Texas        0.183
+##  9 High               Gonzales County, Texas       0.275
+## 10 High               Grimes County, Texas         0.222
+## # … with 48 more rows</code></pre>
+<pre class="r"><code>project %&gt;% summary(no_insurance_all)</code></pre>
+<pre><code>##     county            young_ins        middle_ins     no_insurance_all
+##  Length:58          Min.   :0.1030   Min.   :0.1980   Min.   :0.1700  
+##  Class :character   1st Qu.:0.1303   1st Qu.:0.2482   1st Qu.:0.2115  
+##  Mode  :character   Median :0.1505   Median :0.2845   Median :0.2485  
+##                     Mean   :0.1502   Mean   :0.2825   Mean   :0.2421  
+##                     3rd Qu.:0.1690   3rd Qu.:0.3137   3rd Qu.:0.2695  
+##                     Max.   :0.2330   Max.   :0.3670   Max.   :0.3070  
+##       lths              hs            college          bachelor     
+##  Min.   :0.0700   Min.   :0.7260   Min.   :0.3710   Min.   :0.1000  
+##  1st Qu.:0.1335   1st Qu.:0.8030   1st Qu.:0.4375   1st Qu.:0.1472  
+##  Median :0.1740   Median :0.8260   Median :0.4765   Median :0.1755  
+##  Mean   :0.1678   Mean   :0.8323   Mean   :0.5124   Mean   :0.2083  
+##  3rd Qu.:0.1970   3rd Qu.:0.8665   3rd Qu.:0.5825   3rd Qu.:0.2575  
+##  Max.   :0.2750   Max.   :0.9300   Max.   :0.7230   Max.   :0.4650  
+##     masters             prof              doct        range_of_insurance
+##  Min.   :0.02600   Min.   :0.00200   Min.   :0.0010   Length:58         
+##  1st Qu.:0.04325   1st Qu.:0.00925   1st Qu.:0.0040   Class :character  
+##  Median :0.05350   Median :0.01200   Median :0.0060   Mode  :character  
+##  Mean   :0.06716   Mean   :0.01753   Mean   :0.0085                     
+##  3rd Qu.:0.07975   3rd Qu.:0.02500   3rd Qu.:0.0110                     
+##  Max.   :0.18300   Max.   :0.07700   Max.   :0.0550</code></pre>
+<pre class="r"><code>mydata &lt;- project[c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11)]
+head(mydata)</code></pre>
+<pre><code>## # A tibble: 6 x 10
+##   young_ins middle_ins no_insurance_all   lths    hs college bachelor masters
+##       &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
+## 1     0.15       0.279            0.239 0.198  0.802   0.436    0.118  0.042 
+## 2     0.182      0.281            0.25  0.176  0.824   0.532    0.21   0.062 
+## 3     0.178      0.314            0.271 0.194  0.806   0.508    0.184  0.059 
+## 4     0.103      0.231            0.189 0.0970 0.903   0.63     0.232  0.08  
+## 5     0.105      0.277            0.223 0.166  0.834   0.581    0.269  0.0970
+## 6     0.233      0.307            0.286 0.101  0.899   0.581    0.288  0.108 
+## # … with 2 more variables: prof &lt;dbl&gt;, doct &lt;dbl&gt;</code></pre>
+<pre class="r"><code>round((cor(mydata)), 2)</code></pre>
+<pre><code>##                  young_ins middle_ins no_insurance_all  lths    hs college
+## young_ins             1.00       0.68             0.81  0.31 -0.31   -0.45
+## middle_ins            0.68       1.00             0.98  0.67 -0.67   -0.64
+## no_insurance_all      0.81       0.98             1.00  0.60 -0.60   -0.62
+## lths                  0.31       0.67             0.60  1.00 -1.00   -0.85
+## hs                   -0.31      -0.67            -0.60 -1.00  1.00    0.85
+## college              -0.45      -0.64            -0.62 -0.85  0.85    1.00
+## bachelor             -0.39      -0.58            -0.54 -0.73  0.73    0.92
+## masters              -0.40      -0.55            -0.52 -0.69  0.69    0.90
+## prof                 -0.34      -0.44            -0.42 -0.54  0.54    0.77
+## doct                 -0.29      -0.37            -0.34 -0.40  0.40    0.63
+##                  bachelor masters  prof  doct
+## young_ins           -0.39   -0.40 -0.34 -0.29
+## middle_ins          -0.58   -0.55 -0.44 -0.37
+## no_insurance_all    -0.54   -0.52 -0.42 -0.34
+## lths                -0.73   -0.69 -0.54 -0.40
+## hs                   0.73    0.69  0.54  0.40
+## college              0.92    0.90  0.77  0.63
+## bachelor             1.00    0.97  0.87  0.74
+## masters              0.97    1.00  0.93  0.83
+## prof                 0.87    0.93  1.00  0.94
+## doct                 0.74    0.83  0.94  1.00</code></pre>
+<p>I renamed each variable so the name would be shorter than it originally was. Here are the new names: young_ins (Persons Without Insurance (Population Under 19 Years), middle_ins (Persons Without Insurance (Population 18 to 64 Years), no_insurance_all (Persons Without Insurance (Population Under 65 Years), lths (less than high school), high school (high school graduate or more), college (some college or more), bachelor (Bachelor’s degree or more), masters (master’s degree or more), prof (professional school degree or more), and doct (doctorate degree). Using the dplyr functions, the results for mean_lths_edu was 0.168, min_lths_edu 0.07, max doct 0.055, min bachelor 0.1, min lths .07, max no_insurance_all .307. I then arranged the counties in descending order and picked out the variables with the letters “ins” in them; I also found the percentile of those that don’t have insurance for each county. After using the filter function, I found that there are 3 counties with the same proportion of “lths” and “hs” degree holders.</p>
+<pre class="r"><code>ggplot(project, aes(x = county)) + geom_bar(aes(y = bachelor, 
+    fill = range_of_insurance), stat = &quot;summary&quot;, fun.y = &quot;mean&quot;) + 
+    theme(legend.position = &quot;right&quot;) + coord_flip()</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-5-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot(project, aes(county, lths, color = no_insurance_all)) + 
+    geom_point() + theme(axis.text.x = element_text(angle = 90, 
+    hjust = 1), legend.position = &quot;left&quot;) + scale_color_gradient(low = &quot;yellow&quot;, 
+    high = &quot;red&quot;)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-5-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>project %&gt;% select_if(is.numeric) %&gt;% cor %&gt;% as.data.frame %&gt;% 
+    rownames_to_column %&gt;% pivot_longer(-1) %&gt;% ggplot(aes(rowname, 
+    name, fill = value)) + geom_tile() + geom_text(aes(label = round(value, 
+    2))) + xlab(&quot;Variable 1&quot;) + ylab(&quot;Variable 2&quot;) + theme(axis.text.x = element_text(size = rel(0.5), 
+    angle = 90), axis.text.y = element_text(size = rel(0.5)))</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-5-3.png" width="768" style="display: block; margin: auto;" /></p>
+<p>The first graph shows the relationship between bachelor degree holders and the range of insurance grouped by county. This graph shows that as the proportion of those with bachelor degrees (or more) increases, then the range of insurance is mostly considered “low”. This title of “low” means that there are not a lot of people in the county that do not have insurance (less than .26 of the population does not have insurance) and the title “high” means that more than .26 of the population does not have insurance. So, those with a bachelors degree or more have a better chance of having insurance since a smaller proportion of the population having no insurance equates to a higher proportion of bachelor degree holders.
+The second graph shows the relationship between those that didn’t graduate high school (“lths”) and those that don’t have insurance (no_insurance_all) grouped by county. The color gradient is from yellow-orange-red. The yellow dots represent a smaller proportion of those without insurance (more insurance in county) and the red dots represent a larger proportion of those without insurance. As you can see, there are more red dots towards the top of the y axis indicating that those that didn’t graduate high school have a higher chance of not having insurance. The yellowish dots are towards the bottom which shows that the fewer the frequency of not graduating from high school, the smaller the chance for not having insurance.
+The last plot is a correlation heat map of the numeric variables in the “project” dataset. These boxes show the correlation between each numeric variable. The darker the blue indicates the less correlated the numeric variables are. The lighter the blue indicates the more correlation. The lowest correlation is between the lths and hs variables (graduated less than high school and graduated high school). This makes sense because these two variables are completely inverse. If 10% of the population did not graduate from high school, then 90% of the population must have. If 85% of the population did not graduate from high school, then 15% did. The highest correlation between one of the insurance variables and education variables is the middle_ins (people without insurance between the ages of 18-64) and lths (less than high school education) at a total of 0.67. Once again, this makes sense because those that did not graduate from high school are most liekly not expected to have insurance.</p>
+<pre class="r"><code>sil_width &lt;- vector()
+for (i in 2:10) {
+    pam_fit &lt;- project %&gt;% select(young_ins, middle_ins, no_insurance_all, 
+        lths, hs, college, bachelor, masters, prof, doct) %&gt;% 
+        pam(i)
+    sil_width[i] &lt;- pam_fit$silinfo$avg.width
+}
+ggplot() + geom_line(aes(x = 1:10, y = sil_width)) + scale_x_continuous(name = &quot;k&quot;, 
+    breaks = 1:10)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_path).</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pam2 &lt;- project %&gt;% select(young_ins, middle_ins, no_insurance_all, 
+    lths, hs, college, bachelor, masters, prof, doct) %&gt;% pam(2)
+pam2</code></pre>
+<pre><code>## Medoids:
+##      ID young_ins middle_ins no_insurance_all  lths    hs college bachelor
+## [1,] 45     0.151      0.292            0.247 0.197 0.803   0.436    0.157
+## [2,]  8     0.108      0.247            0.202 0.133 0.867   0.605    0.287
+##      masters  prof  doct
+## [1,]   0.047 0.011 0.003
+## [2,]   0.103 0.031 0.014
+## Clustering vector:
+##  [1] 1 1 1 2 2 2 1 2 2 1 2 1 1 2 1 2 2 1 1 1 2 1 2 1 1 1 2 2 2 1 1 1 1 2 2 1 1 1
+## [39] 1 1 2 2 1 1 1 2 1 1 1 2 1 1 1 1 1 1 2 1
+## Objective function:
+##      build       swap 
+## 0.09881977 0.09181616 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>final &lt;- project %&gt;% mutate(cluster = as.factor(pam2$clustering))
+confmat &lt;- final %&gt;% count(cluster) %&gt;% arrange(desc(n)) %&gt;% 
+    pivot_wider(names_from = &quot;cluster&quot;, values_from = &quot;n&quot;, values_fill = list(n = 0))
+confmat</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##     `1`   `2`
+##   &lt;int&gt; &lt;int&gt;
+## 1    37    21</code></pre>
+<pre class="r"><code>ggplot(final, aes(x = hs, y = college, color = cluster)) + geom_point()</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-6-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(GGally)
+project %&gt;% mutate(cluster = as.factor(pam2$clustering)) %&gt;% 
+    ggpairs(columns = 2:8, aes(color = cluster))</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-6-3.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(pam2, which = 2)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-6-4.png" width="768" style="display: block; margin: auto;" /></p>
+<p>After running the code, I found that the appropriate number of clusters to be 2. The ggplot showed that the highest sil_width was at a value of k=2. I used this cluster number to produce a variety of graphs after loading the GGally library. These graphs show the correlation between certain variables. The same relationship between lths and hs is shown here as it was on the correlation heat map. My cluster solution is not amazing and considered reasonable since the average solhouette width is 0.51. These clusters and graphs shown are a reflection of the heat map correlation. Two of the variables shown here have a negative correlation- college (college degree or more) and no_insurance_all (amount of county that doesn’t have insurance). These two variables show that as bachelor degrees increase, the frequency of those without insurance decreases.</p>
+</div>
+</div>

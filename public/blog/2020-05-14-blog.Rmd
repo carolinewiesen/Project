@@ -1,0 +1,36 @@
+---
+title: Python and R! How do they relate?
+author: Caroline Wiesen
+date: '2020-05-14'
+slug: blog
+categories: []
+tags: []
+description: ''
+---
+Here's a picture of my dog, Scooter, because I think he's pretty awesome.
+
+![](/blog/2020-05-14-blog_files/fullsizeoutput_2b64.jpeg)
+
+## What even is coding?
+
+There are many different coding systems that are used to interpret various statistical methods, but two systems that are great for statistical investigations are "R" and "Python". Although these two methods for statistical analysis are similar in some ways, they are also very different in the way they code. But, Python code can still work while using the R application- so learning both "languages" of code can be very helpful for statistical analysis! 
+
+Shown below are some simple examples of how R and Python can communicate with one another. We have an R chunk with code specific to R and a Python chunk with code specific to Python, and yet they work together!
+
+```{r}
+#here's an R code!
+library(reticulate)
+woah <- "No way!"
+```
+
+So that was an R code chunk that basically made a name for the phrase "No way!" called "woah". And below, we have a Python code chunk.
+
+```{python}
+#here's a Python code!
+works="This actually works!"
+print(r.woah,works)
+```
+
+## No way! This actually works!
+
+This Python chunk is when we grab the R language from before and use it in the Python chunk. The phrase "This actually works" now is called "works". Combining these names together, woah and works, we get the sentence: "No way! This actually works!" Pretty cool right? I mean, at least these coding languages found a common ground and are able to communicate together. What a sweet world.

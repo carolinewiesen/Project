@@ -1,0 +1,22 @@
+---
+categories:
+- blog
+showpagemeta: false
+tags:
+- blog
+title: Projects
+showpagemeta: false
+- projects
+title: Exploratory Data Analysis with Tidyverse Tools
+showpagemeta: false
+- projects
+title: Modeling, Testing, and Predicting
+showpagemeta: false
+---
+## Blog 
+
+Here are some projects I have recently completed:
+
+- [Exploratory Data Analysis with Tidyverse Tools](/project1/)
+
+- [Modeling, Testing, and Classification](/project2/)

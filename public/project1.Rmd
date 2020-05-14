@@ -1,4 +1,6 @@
 ---
+title: "Project 1"
+showpagemeta: false
 output:
   pdf_document: default
   html_document: default
